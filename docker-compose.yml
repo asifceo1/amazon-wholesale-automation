@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database (optional)
+  postgres:
+    image: postgres:15-alpine
+    container_name: wholesale-db
+    environment:
+      POSTGRES_DB: wholesale_automation
+      POSTGRES_USER: wholesale
+      POSTGRES_PASSWORD: wholesalepass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - wholesale-network
+
+  # Redis Cache (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: wholesale-cache
+    ports:
+      - "6379:6379"
+    networks:
+      - wholesale-network
+
+  # Python Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wholesale-automation
+    environment:
+      - KEEPA_API_KEY=${KEEPA_API_KEY}
+      - HELIUM10_API_KEY=${HELIUM10_API_KEY}
+      - DATABASE_URL=postgresql://wholesale:wholesalepass@postgres:5432/wholesale_automation
+      - REDIS_URL=redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config:/app/config
+      - ./data:/app/data
+      - ./reports:/app/reports
+      - ./logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - wholesale-network
+
+volumes:
+  postgres_data:
+
+networks:
+  wholesale-network:
+    driver: bridge
